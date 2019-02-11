@@ -1,12 +1,12 @@
 package cnidel
 
 import (
-	"encoding/json"
+  "encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
 
-	danmtypes "github.com/nokia/danm/pkg/crd/apis/danm/v1"
+  danmtypes "github.com/nokia/danm/pkg/crd/apis/danm/v1"
 	"github.com/nokia/danm/pkg/danmep"
 )
 
@@ -52,14 +52,14 @@ func getSriovCniConfig(netInfo *danmtypes.DanmNet, ipamOptions danmtypes.IpamCon
 		IfName: ep.Spec.Iface.Name,
 		L2Mode: true,
 		Vlan:   vlanid,
-		Dpdk:   DpdkOption{},
+		Dpdk:   nil,
 		Ipam:   ipamOptions,
 	}
 	if ipamOptions.Ip != "" {
 		sriovConfig.L2Mode = false
 	}
 	if netInfo.Spec.Options.Dpdk {
-		sriovConfig.Dpdk = DpdkOption{
+		sriovConfig.Dpdk = &DpdkOption{
 			NicDriver:  dpdkNicDriver,
 			DpdkDriver: dpdkDriver,
 			DpdkTool:   dpdkTool,
@@ -74,18 +74,18 @@ func getSriovCniConfig(netInfo *danmtypes.DanmNet, ipamOptions danmtypes.IpamCon
 
 //This function creates CNI configuration for the dynamic-level MACVLAN backend
 func getMacvlanCniConfig(netInfo *danmtypes.DanmNet, ipamOptions danmtypes.IpamConfig, ep *danmtypes.DanmEp) ([]byte, error) {
-	hDev := danmep.DetermineHostDeviceName(netInfo)
-	macvlanConfig := macvlanNet{
-		Master: hDev,
-		//TODO: make these params configurable if required
-		Mode: "bridge",
-		MTU:  1500,
-		Ipam: ipamOptions,
-	}
-	log.Printf("LOFASZ MACVLAN CONFIG %v/n", macvlanConfig)
-	rawConfig, err := json.Marshal(macvlanConfig)
-	if err != nil {
-		return nil, errors.New("Error putting together CNI config for MACVLAN plugin: " + err.Error())
-	}
-	return rawConfig, nil
+  hDev := danmep.DetermineHostDeviceName(netInfo)
+  macvlanConfig := macvlanNet{
+    Master: hDev,
+    //TODO: make these params configurable if required
+    Mode: "bridge",
+    MTU:  1500,
+    Ipam: ipamOptions,
+  }
+  log.Printf("LOFASZ MACVLAN CONFIG %v/n", macvlanConfig)
+  rawConfig, err := json.Marshal(macvlanConfig)
+  if err != nil {
+    return nil, errors.New("Error putting together CNI config for MACVLAN plugin: " + err.Error())
+  }
+  return rawConfig, nil
 }

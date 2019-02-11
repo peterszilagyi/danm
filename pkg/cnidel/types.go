@@ -14,22 +14,22 @@ type cniBackendConfig struct {
 
 // sriovNet represent the configuration of sriov plugin
 type sriovNet struct {
-	// the name of the network
-	Name string `json:"name"`
-	// currently constant "sriov"
-	Type string `json:"type"`
-	// name of the PF
-	PfName string `json:"if0"`
-	// interface name in the Container
-	IfName string `json:"if0name,omitEmpty"`
-	// if true then add VF as L2 mode only, IPAM will not be executed
-	L2Mode bool `json:"l2enable,omitEmpty"`
-	// VLAN ID to assign for the VF
-	Vlan int `json:"vlan,omitEmpty"`
-	// IPAM configuration to be used for this network
-	Ipam danmtypes.IpamConfig `json:"ipam,omitEmpty"`
-	// DPDK configuration
-	Dpdk DpdkOption `json:"dpdk,omitEmpty"`
+  // the name of the network
+  Name string `json:"name"`
+  // currently constant "sriov"
+  Type string `json:"type"`
+  // name of the PF
+  PfName string `json:"master"`
+  // interface name in the Container
+  IfName string `json:"if0name,omitEmpty"`
+  // if true then add VF as L2 mode only, IPAM will not be executed
+  L2Mode bool `json:"l2enable,omitEmpty"`
+  // VLAN ID to assign for the VF
+  Vlan int `json:"vlan,omitEmpty"`
+  // IPAM configuration to be used for this network
+  Ipam danmtypes.IpamConfig `json:"ipam,omitEmpty"`
+  // DPDK configuration
+  Dpdk *DpdkOption `json:"dpdk,omitEmpty"`
 }
 
 // DpdkOption represents the DPDK options for the sriov plugin
