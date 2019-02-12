@@ -2,20 +2,22 @@ package main
 
 import (
 	"flag"
-	"time"
-	"os"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/golang/glog"
+	corev1 "k8s.io/api/core/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-        "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/kubernetes/scheme"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-        v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-        corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
+
 	danmclientset "github.com/nokia/danm/pkg/crd/client/clientset/versioned"
 	danminformers "github.com/nokia/danm/pkg/crd/client/informers/externalversions"
 	//"github.com/nokia/danm/pkg/crd/signals"
@@ -63,7 +65,7 @@ func main() {
 			glog.Fatalf("Error running controller: %s", err.Error())
 		}
 	}
-	
+
 	rl, err := resourcelock.New(resourcelock.EndpointsResourceLock,
 		"kube-system",
 		"danm-svc-controller",
@@ -92,7 +94,7 @@ func main() {
 	glog.Fatalln("Lost lease")
 }
 
-func GetHostname() (string) {
+func GetHostname() string {
 	ret, err := os.Hostname()
 	if err != nil {
 		glog.Fatalf("hostname %v", err)
@@ -110,4 +112,3 @@ func createRecorder(kubeClient *kubernetes.Clientset, comp string) record.EventR
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 }
-

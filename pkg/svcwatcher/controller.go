@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -15,8 +18,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"strings"
-	"time"
 
 	danmv1 "github.com/nokia/danm/pkg/crd/apis/danm/v1"
 	danmclientset "github.com/nokia/danm/pkg/crd/client/clientset/versioned"
@@ -26,8 +27,8 @@ import (
 )
 
 type Controller struct {
-	kubeclient    kubernetes.Interface
-	danmclient    danmclientset.Interface
+	kubeclient kubernetes.Interface
+	danmclient danmclientset.Interface
 
 	podLister     corelisters.PodLister
 	podSynced     cache.InformerSynced
@@ -209,14 +210,14 @@ func (c *Controller) UpdateEndpointsList(epList []*corev1.Endpoints) {
 
 func (c *Controller) CreateModifyEndpoints(svc *corev1.Service, ep bool, des []*danmv1.DanmEp) {
 	epNew := c.MakeNewEps(svc, des)
-    	if ep {
+	if ep {
 		c.kubeclient.Core().Endpoints(svc.Namespace).Update(&epNew)
 	} else {
 		c.kubeclient.Core().Endpoints(svc.Namespace).Create(&epNew)
 	}
 }
 
-func (c* Controller) UpdatePodRvInEps(epsList []*corev1.Endpoints, pod *corev1.Pod) ([]*corev1.Endpoints) {
+func (c *Controller) UpdatePodRvInEps(epsList []*corev1.Endpoints, pod *corev1.Pod) []*corev1.Endpoints {
 	var epList []*corev1.Endpoints
 	for _, eps := range epsList {
 		if eps.Subsets == nil {
@@ -245,7 +246,7 @@ func (c* Controller) UpdatePodRvInEps(epsList []*corev1.Endpoints, pod *corev1.P
 	return epList
 }
 
-func (c* Controller) UpdatePodStatusInEps(epsList []*corev1.Endpoints, pod *corev1.Pod, oldReady, newReady bool) ([]*corev1.Endpoints) {
+func (c *Controller) UpdatePodStatusInEps(epsList []*corev1.Endpoints, pod *corev1.Pod, oldReady, newReady bool) []*corev1.Endpoints {
 	var epList []*corev1.Endpoints
 	for _, eps := range epsList {
 		svc, err := c.serviceLister.Services(eps.Namespace).Get(eps.Name)
@@ -270,7 +271,7 @@ func (c* Controller) UpdatePodStatusInEps(epsList []*corev1.Endpoints, pod *core
 			}
 		}
 		for i, a := range eps.Subsets[0].NotReadyAddresses {
-			if ( a.TargetRef != nil ) && newReady && a.TargetRef.Name == pod.Name && a.TargetRef.Namespace == pod.Namespace {
+			if (a.TargetRef != nil) && newReady && a.TargetRef.Name == pod.Name && a.TargetRef.Namespace == pod.Namespace {
 				newEps := eps.DeepCopy()
 				newEps.Subsets[0].NotReadyAddresses[i].TargetRef.ResourceVersion = pod.ResourceVersion
 				newEps.Subsets[0].Addresses = append(newEps.Subsets[0].Addresses, newEps.Subsets[0].NotReadyAddresses[i])
@@ -282,13 +283,13 @@ func (c* Controller) UpdatePodStatusInEps(epsList []*corev1.Endpoints, pod *core
 	return epList
 }
 
-func (c *Controller) MakeNewEps(svc *corev1.Service, des []*danmv1.DanmEp) (corev1.Endpoints) {
-        epNew := corev1.Endpoints{
-        	ObjectMeta: meta_v1.ObjectMeta{
-                	Name:        svc.Name,
-                	Namespace:   svc.Namespace,
-                	Annotations: svc.GetAnnotations(),
-        	},
+func (c *Controller) MakeNewEps(svc *corev1.Service, des []*danmv1.DanmEp) corev1.Endpoints {
+	epNew := corev1.Endpoints{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:        svc.Name,
+			Namespace:   svc.Namespace,
+			Annotations: svc.GetAnnotations(),
+		},
 	}
 	if des == nil {
 		epNew.Subsets = nil
@@ -339,6 +340,7 @@ func (c *Controller) MakeNewEps(svc *corev1.Service, des []*danmv1.DanmEp) (core
 
 	return epNew
 }
+
 //////////////////////////////
 //                          //
 //  Danmep change handlers  //
@@ -483,7 +485,7 @@ func (c *Controller) updatePod(old, new interface{}) {
 	}
 	// first we need to reflect status change
 	if oldReady != newReady {
-		// status change 
+		// status change
 		epList := c.UpdatePodStatusInEps(epsList, newPod, oldReady, newReady)
 		if len(epList) > 0 {
 			c.UpdateEndpointsList(epList)
@@ -491,7 +493,7 @@ func (c *Controller) updatePod(old, new interface{}) {
 	}
 	// label change has lower priority
 	if labelChange {
-		// label change 
+		// label change
 		podName := newPod.Name
 		podNs := newPod.Namespace
 		desList, err := c.danmepLister.List(sel)

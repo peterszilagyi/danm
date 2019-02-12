@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"reflect"
+
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
+
 	danmv1 "github.com/nokia/danm/pkg/crd/apis/danm/v1"
-	"reflect"
 )
 
 const danmSelector = "danm.k8s.io/selector"
@@ -136,4 +138,3 @@ func MatchExistingSvc(de *danmv1.DanmEp, servicesList []*corev1.Service) []*core
 	}
 	return svcList
 }
-

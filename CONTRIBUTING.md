@@ -49,7 +49,7 @@ The minimum expectation towards all pull requests is that:
 3. All the not many -contribution opportunity 2.0- existing Unit Tests pass
 
 Not mandatory, *but highly appreciated:*
-1. Existing coding style (2 spaces indentation, camelCase/CamelCase naming scheme) maintained
+1. Existing coding style (goimports formatted, camelCase/CamelCase naming scheme) maintained
 2. New Unit Tests are written to cover newly added (or even legacy) code
 
 When writing Unit Tests we prefer testing the packages through their public interfaces!
