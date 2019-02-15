@@ -16,10 +16,14 @@ import (
 	"github.com/containernetworking/cni/pkg/version"
 	uuid "github.com/satori/go.uuid"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+  k8s "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/intel/multus-cni/checkpoint"
+	"github.com/intel/multus-cni/logging"
+	multustypes "github.com/intel/multus-cni/types"
 	"github.com/nokia/danm/pkg/cnidel"
 	danmtypes "github.com/nokia/danm/pkg/crd/apis/danm/v1"
 	danmclientset "github.com/nokia/danm/pkg/crd/client/clientset/versioned"
@@ -61,6 +65,7 @@ type cniArgs struct {
 	labels      map[string]string
 	stdIn       []byte
 	interfaces  []danmtypes.Interface
+  podUid       k8s.UID
 }
 
 func createInterfaces(args *skel.CmdArgs) error {
@@ -137,6 +142,7 @@ func extractCniArgs(args *skel.CmdArgs) (*cniArgs, error) {
 		nil,
 		args.StdinData,
 		nil,
+                     "",
 	}
 	return &cmdArgs, nil
 }
@@ -156,6 +162,7 @@ func getPodAttributes(args *cniArgs) error {
 	}
 	args.annotation = pod.Annotations
 	args.labels = pod.Labels
+  args.podUid = pod.UID
 	return nil
 }
 
@@ -185,8 +192,28 @@ func extractConnections(args *cniArgs) error {
 	return nil
 }
 
+func getRegisteredDevices(args *cniArgs) (map[string]*multustypes.ResourceInfo, error) {
+	var resourceMap map[string]*multustypes.ResourceInfo
+	checkpoint, err := checkpoint.GetCheckpoint()
+	if err != nil {
+		return nil, fmt.Errorf("getResourcesFromCheckpoint: failed to get a checkpoint instance: %v", err)
+	}
+	resourceMap, err = checkpoint.GetComputeDeviceMap(string(args.podUid))
+	if err != nil {
+		return nil, fmt.Errorf("getResourcesFromCheckpoint: failed to get resourceMap from kubelet checkpoint file: %v", err)
+	}
+	logging.Debugf("getResourcesFromCheckpoint(): resourceMap instance: %+v", resourceMap)
+
+	return resourceMap, nil
+}
+
 func setupNetworking(args *cniArgs) (*current.Result, error) {
 	syncher := syncher.NewSyncher(len(args.interfaces))
+	resources, _ := getRegisteredDevices(args)
+	for entry := range resources {
+		log.Println("Resource:" + entry)
+	}
+
 	for nicId, nicParams := range args.interfaces {
 		nicParams.DefaultIfaceName = "eth" + strconv.Itoa(nicId)
 		go createInterface(syncher, nicParams, args)
@@ -239,6 +266,7 @@ func createDelegatedInterface(danmClient danmclientset.Interface, iface danmtype
 	if err != nil {
 		return nil, err
 	}
+	err = putDanmEp(args, ep)
 	err = putDanmEp(args, ep)
 	if err != nil {
 		return nil, errors.New("DanmEp object could not be PUT to K8s due to error:" + err.Error())
@@ -442,7 +470,7 @@ func deleteDanmNet(danmClient danmclientset.Interface, ep danmtypes.DanmEp, netI
 
 func main() {
 	var err error
-	f, err := os.OpenFile("/var/log/plugin.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0640)
+	f, err := os.OpenFile("/var/log/danm.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0640)
 	if err == nil {
 		log.SetOutput(f)
 		defer f.Close()
